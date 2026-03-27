@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme";
 import Navbar from "@/components/navbar";
 import HomePage from "@/pages/home";
+import RegisterPage, { getGuestProfile } from "@/pages/register";
 import QuizPage from "@/pages/quiz";
 import ResultsPage from "@/pages/results";
 import ExplorePage from "@/pages/explore";
@@ -14,7 +15,7 @@ import { CareerMatch } from "@/lib/careers";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 
-type Page = "home" | "quiz" | "results" | "explore" | "profile";
+type Page = "home" | "register" | "quiz" | "results" | "explore" | "profile";
 
 function AppContent() {
   const [page, setPage] = useState<Page>("home");
@@ -22,15 +23,27 @@ function AppContent() {
   const { user } = useAuth();
 
   function goHome() { setPage("home"); }
-  function goQuiz() { setPage("quiz"); }
   function goExplore() { setPage("explore"); }
   function goProfile() { setPage("profile"); }
+
+  function goQuiz() {
+    // Check if profile is filled in
+    const profileDone = user?.profileCompleted || !!getGuestProfile();
+    if (!profileDone) {
+      setPage("register");
+    } else {
+      setPage("quiz");
+    }
+  }
+
+  function handleRegisterComplete() {
+    setPage("quiz");
+  }
 
   async function handleQuizComplete(matches: CareerMatch[]) {
     setResults(matches);
     setPage("results");
 
-    // Save result if user is logged in
     if (user) {
       try {
         await apiRequest("POST", "/api/quiz-results", {
@@ -56,13 +69,13 @@ function AppContent() {
     setPage("results");
   }
 
-  const showNavbar = page !== "quiz";
+  const showNavbar = page !== "quiz" && page !== "register";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {showNavbar && (
         <Navbar
-          currentPage={page}
+          currentPage={page as any}
           onHome={goHome}
           onQuiz={goQuiz}
           onExplore={goExplore}
@@ -71,7 +84,10 @@ function AppContent() {
       )}
 
       {page === "home" && <HomePage onStartQuiz={goQuiz} onExplore={goExplore} />}
-      {page === "quiz" && <QuizPage onComplete={handleQuizComplete} onBack={goHome} />}
+      {page === "register" && (
+        <RegisterPage onComplete={handleRegisterComplete} onBack={goHome} />
+      )}
+      {page === "quiz" && <QuizPage onComplete={handleQuizComplete} onBack={() => setPage("register")} />}
       {page === "results" && <ResultsPage matches={results} onRetake={handleRetake} onExplore={goExplore} />}
       {page === "explore" && <ExplorePage onStartQuiz={goQuiz} />}
       {page === "profile" && (

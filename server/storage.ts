@@ -1,10 +1,11 @@
-import { users, quizResults, type User, type UpsertUser, type QuizResult, type InsertQuizResult } from "@shared/schema";
+import { users, quizResults, type User, type UpsertUser, type QuizResult, type InsertQuizResult, type UpdateProfile } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateProfile(id: string, profile: UpdateProfile): Promise<User>;
   saveQuizResult(result: InsertQuizResult): Promise<QuizResult>;
   getQuizResults(userId: string): Promise<QuizResult[]>;
 }
@@ -23,6 +24,15 @@ export class DatabaseStorage implements IStorage {
         target: users.id,
         set: { ...userData, updatedAt: new Date() },
       })
+      .returning();
+    return user;
+  }
+
+  async updateProfile(id: string, profile: UpdateProfile): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...profile, profileCompleted: true, updatedAt: new Date() })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }
